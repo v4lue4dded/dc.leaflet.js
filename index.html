@@ -1,157 +1,176 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html>
+
 <head>
-	<title>DC.js + Leaflet</title>
+  <title>DC.js + Leaflet</title>
 
-	<meta itemprop="name" content="DC.js + Leaflet"/>
-	<meta itemprop="description" content="DC.js + Leaflet chart"/>
+  <meta itemprop="name" content="DC.js + Leaflet" />
+  <meta itemprop="description" content="DC.js + Leaflet chart" />
 
-	<meta charset="UTF-8">
+  <meta charset="UTF-8">
 
-	<link type="text/css" href="lib/leaflet.css" rel="stylesheet"/>
-	<link type="text/css" href="lib/leaflet.markercluster.css" rel="stylesheet"/>
-	<link type="text/css" href="lib/dc.css" rel="stylesheet"/>
+  <link type="text/css" href="lib/leaflet.css" rel="stylesheet" />
+  <link type="text/css" href="lib/leaflet.markercluster.css" rel="stylesheet" />
+  <link type="text/css" href="lib/dc.css" rel="stylesheet" />
 
   <style>
     #holder {
-      width:850px;
-      margin:20px auto;
+      width: 850px;
+      margin: 20px auto;
     }
+
     #holder>div {
-      padding:30px 0;
-      clear:both;
+      padding: 30px 0;
+      clear: both;
     }
+
     .map {
-      width:600px;
-      height:400px;
+      width: 600px;
+      height: 400px;
     }
+
     .pie {
-      margin-left:30px;
+      margin-left: 30px;
     }
   </style>
 </head>
+
 <body>
 
-<div id="holder">
-  <div id="demo3">
-    <h2>Le choropleth</h2>
-    <i>Population by age groups in Bulgaria in 2011 (excluding the capital)</i>
-    <div class="map"></div>
-    <div class="pie"></div>
+  <div id="holder">
+    <div id="demo3">
+      <h2>Le choropleth</h2>
+      <i>world map</i>
+      <div class="map"></div>
+      <div class="pie"></div>
+    </div>
   </div>
-</div>
 
-<script type="text/javascript" src="lib/d3.js"></script>
-<script type="text/javascript" src="lib/crossfilter.js"></script>
-<script type="text/javascript" src="lib/dc.js"></script>
-<script type="text/javascript" src="lib/leaflet.js"></script>
+  <script type="text/javascript" src="lib/d3.js"></script>
+  <script type="text/javascript" src="lib/crossfilter.js"></script>
+  <script type="text/javascript" src="lib/dc.js"></script>
+  <script type="text/javascript" src="lib/leaflet.js"></script>
+  <script type="text/javascript" src="lib/leaflet.markercluster.js"></script>
+  <script type="text/javascript" src="dc.leaflet.js"></script>
 
-<!--Optional-->
-<script type="text/javascript" src="lib/leaflet.markercluster.js"></script>
+  <script type="text/javascript">
+    function fixMissingNameMatch(data, geojson) {
+      const locationNames = new Set(data.map(d => d.location_name));
+      const featureNames = new Set(geojson.features.map(f => f.properties.nameMapped));
 
-<script type="text/javascript" src="dc.leaflet.js"></script>
-<script type="text/javascript">
+      const locationNamesNotInFeatures = new Set([...locationNames].filter(x => !featureNames.has(x)));
+      const featureNamesNotInLocations = new Set([...featureNames].filter(x => !locationNames.has(x)));
+      // create prompt for llm to gnereate match to update geojson_to_gbd_name_mapping.json
+      console.log("Please match featureNamesNotInLocations as key in json to locationNamesNotInFeatures as value in json (only if there is a match don't even add key for those without match):");
+      console.log("locationNamesNotInFeatures:", locationNamesNotInFeatures);
+      console.log("featureNamesNotInLocations:", featureNamesNotInLocations);
+    }
 
+    var gbd_data = false;
+    var world_geojson = false;
+    var nameMapping = {};
 
-// var demo2_geojson=false;
-// var demo2=false;
-// d3.json("bulgaria.geojson", function(data) {
-//   demo2_geojson=data;
-//   if (demo2)
-//     drawChoropleth(demo2,demo2_geojson);
-// });
-// d3.csv("demo2.csv", function(data) {
-//   demo2=data;
-//   if (demo2_geojson)
-//     drawChoropleth(demo2,demo2_geojson);
-// });
+    d3.json("geojson_to_gbd_name_mapping.json", function (mappingData) {
+      nameMapping = mappingData;
 
-
-var gbd_data=false;
-var world_geojson=false;
-d3.csv("IHME-GBD_2021_DATA-6c5ee13e-1.csv", function(data) {
-  gbd_data=data;
-  console.log("gbd_data:",gbd_data)
-  if (world_geojson)
-    drawChoropleth(gbd_data,world_geojson);
-});
-d3.json("world.geo.json", function(data) {
-  world_geojson=data;
-  if (gbd_data)
-    drawChoropleth(gbd_data,world_geojson);
-});
-
-/*     Choropleth      */
-
-function drawChoropleth(data,geojson) {
-  console.log("data:", data)
-  var xf = crossfilter(data);
-  var groupname = "Choropleth";
-	var facilities = xf.dimension(function(d) { return d.location_name; });
-	var facilitiesGroup = facilities.group().reduceSum(function(d) { return d.value;});
-
-  console.log(facilities)
-  console.log(facilitiesGroup)
-
-  dc.leafletChoroplethChart("#demo3 .map",groupname)
-      .dimension(facilities)
-      .group(facilitiesGroup)
-      .width(600)
-	    .height(400)
-      .center([0,0])
-      .zoom(1)
-      .geojson(geojson)
-      .colors(['#fff7f3', '#fde0dd', '#fcc5c0', '#fa9fb5', '#f768a1', '#dd3497', '#ae017e', '#7a0177', '#49006a'])
-      .colorDomain(function() {
-        return [dc.utils.groupMin(this.group(), this.valueAccessor()),
-         dc.utils.groupMax(this.group(), this.valueAccessor())];
-      })
-      .colorAccessor(function(d,i) {
-        return d.value;
-      })
-      .featureKeyAccessor(function(feature) {
-        return feature.properties.name;
-      })
-      .renderPopup(true)
-      .popup(function(d,feature) {
-        return feature.properties.nameEn+" : "+d.value;
-      });  
-
-	var sex_name = xf.dimension(function(d) { return d.sex_name; });
-	var sex_nameGroup = sex_name.group().reduceSum(function(d) { return d.value;});
-
-  dc.pieChart("#demo3 .pie",groupname)
-      .dimension(sex_name)
-      .group(sex_nameGroup)
-      .width(200)
-	    .height(200)
-      .ordering(function (p) {
-        return +p.sex_name;
-      })
-	    .renderLabel(false)
-	    .renderTitle(true)
-      .title(function(d) { 
-        return d.sex_name
+      d3.csv("IHME-GBD_2021_DATA-6c5ee13e-1.csv", function (data) {
+        gbd_data = data;
+        console.log("gbd_data:", gbd_data);
+        if (world_geojson) {
+          fixMissingNameMatch(gbd_data, world_geojson);
+          drawChoropleth(gbd_data, world_geojson);
+        }
       });
 
-	dc.renderAll(groupname);
-}
-</script>
+      d3.json("world.geo.json", function (data) {
+        world_geojson = data;
 
+        console.log("nameMapping:", nameMapping);
+        // Adjust the geojson features to include nameMapped
+        world_geojson.features.forEach(function (feature) {
+          var originalName = feature.properties.name;
+          feature.properties.nameMapped = nameMapping[originalName] || originalName;
+        });
 
-<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+        if (gbd_data) {
+          fixMissingNameMatch(gbd_data, world_geojson);
+          drawChoropleth(gbd_data, world_geojson);
+        }
+      });
+    });
 
-	<script type="text/javascript">
-		var _gaq = _gaq || [];
-		_gaq.push(['_setAccount', 'UA-2905006-14']);
-		_gaq.push(['_trackPageview']);
+    /* Choropleth */
 
-		(function() {
-			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-		})();
+    function drawChoropleth(data, geojson) {
+      console.log("data:", data);
+      var xf = crossfilter(data);
+      var groupname = "Choropleth";
+      var facilities = xf.dimension(function (d) { return d.location_name; });
+      var facilitiesGroup = facilities.group().reduceSum(function (d) { return d.value; });
 
-	</script>
+      console.log(facilities);
+      console.log(facilitiesGroup);
+
+      dc.leafletChoroplethChart("#demo3 .map", groupname)
+        .dimension(facilities)
+        .group(facilitiesGroup)
+        .width(600)
+        .height(400)
+        .center([24, 26])
+        .zoom(1.47)
+        .geojson(geojson)
+        .colors(['#fff7f3', '#fde0dd', '#fcc5c0', '#fa9fb5', '#f768a1', '#dd3497', '#ae017e', '#7a0177', '#49006a'])
+        .colorDomain(function () {
+          return [dc.utils.groupMin(this.group(), this.valueAccessor()),
+          dc.utils.groupMax(this.group(), this.valueAccessor())];
+        })
+        .colorAccessor(function (d, i) {
+          return d.value;
+        })
+        .featureKeyAccessor(function (feature) {
+          return feature.properties.nameMapped;
+        })
+        .renderPopup(true)
+        .popup(function (d, feature) {
+          return feature.properties.nameMapped + " : " + d.value;
+        });
+
+      var sex_name = xf.dimension(function (d) { return d.sex_name; });
+      var sex_nameGroup = sex_name.group().reduceSum(function (d) { return d.value; });
+
+      dc.pieChart("#demo3 .pie", groupname)
+        .dimension(sex_name)
+        .group(sex_nameGroup)
+        .width(200)
+        .height(200)
+        .ordering(function (p) {
+          return +p.sex_name;
+        })
+        .renderLabel(false)
+        .renderTitle(true)
+        .title(function (d) {
+          return d.sex_name;
+        });
+
+      dc.renderAll(groupname);
+    }
+  </script>
+
+  <script>!function (d, s, id) { var js, fjs = d.getElementsByTagName(s)[0]; if (!d.getElementById(id)) { js = d.createElement(s); js.id = id; js.src = "//platform.twitter.com/widgets.js"; fjs.parentNode.insertBefore(js, fjs); } }(document, "script", "twitter-wjs");</script>
+
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-2905006-14']);
+    _gaq.push(['_trackPageview']);
+
+    (function () {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+
+  </script>
 </body>
+
 </html>

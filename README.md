@@ -58,3 +58,9 @@ dc.leafletChoroplethChart(parent,chartGroup)
   .renderPopup(true)      - set if popups should be shown; Default: true
   .brushOn(true)          - if the map would select datapoints; Default: true
 ```
+
+
+geo json source tried:
+https://public.opendatasoft.com/explore/dataset/world-administrative-boundaries/export/
+geo json analyzer:
+https://geojson.io/#map=1.45/-23.3/-105
